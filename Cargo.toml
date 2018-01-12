@@ -1,0 +1,6 @@
+[package]
+name = "utf"
+version = "0.1.0"
+authors = ["M Farkas-Dyck <strake888@gmail.com>"]
+description = "UTF-8"
+license = "MIT OR Apache-2.0"

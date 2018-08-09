@@ -79,12 +79,13 @@ impl UtfExt for u32 {
         if self >= 1 << 11 { (0xE0, 3) } else
         if self >= 1 <<  7 { (0xC0, 2) } else
                            { (0x00, 1) };
-        for i in (1..l).rev() {
-            *bs.get_mut(i)? = self as u8 & 0x3F | 0x80;
+        let bs = bs.get_mut(0..l)?;
+        for bp in bs.iter_mut().skip(1).rev() {
+            *bp = self as u8 & 0x3F | 0x80;
             self >>= 6;
         }
-        *bs.get_mut(0)? = self as u8 | first;
-        Some(&mut bs[0..l])
+        bs[0] = self as u8 | first;
+        Some(bs)
     }
 }
 

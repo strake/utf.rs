@@ -3,8 +3,7 @@
 #[cfg(test)]
 extern crate std;
 
-use core::char::*;
-use core::iter;
+use core::{char::*, iter, str};
 
 /// An iterator over an iterator of bytes of the characters the bytes represent
 /// as UTF-8
@@ -45,6 +44,47 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
                 }
             }
         })
+    }
+}
+
+mod private {
+    pub trait UtfExtSealed {}
+}
+use private::*;
+
+pub trait UtfExt: UtfExtSealed {
+    type UtfSlice: ?Sized;
+    /// Encode the character into the given buffer; return `None` if the buffer is too short.
+    fn try_encode_utf8(self, bs: &mut [u8]) -> Option<&mut Self::UtfSlice>;
+}
+
+impl UtfExtSealed for char {}
+impl UtfExtSealed for u32 {}
+
+impl UtfExt for char {
+    type UtfSlice = str;
+    #[inline]
+    fn try_encode_utf8(self, bs: &mut [u8]) -> Option<&mut str> {
+        (self as u32).try_encode_utf8(bs).map(|bs| unsafe { str::from_utf8_unchecked_mut(bs) })
+    }
+}
+
+impl UtfExt for u32 {
+    type UtfSlice = [u8];
+    fn try_encode_utf8(mut self, bs: &mut [u8]) -> Option<&mut [u8]> {
+        let (first, l) =
+        if self >= 1 << 26 { (0xFC, 6) } else
+        if self >= 1 << 21 { (0xF8, 5) } else
+        if self >= 1 << 16 { (0xF0, 4) } else
+        if self >= 1 << 11 { (0xE0, 3) } else
+        if self >= 1 <<  7 { (0xC0, 2) } else
+                           { (0x00, 1) };
+        for i in (1..l).rev() {
+            *bs.get_mut(i)? = self as u8 & 0x3F | 0x80;
+            self >>= 6;
+        }
+        *bs.get_mut(0)? = self as u8 | first;
+        Some(&mut bs[0..l])
     }
 }
 

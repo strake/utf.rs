@@ -71,22 +71,23 @@ impl UtfExt for char {
 
 impl UtfExt for u32 {
     type UtfSlice = [u8];
-    fn try_encode_utf8(mut self, bs: &mut [u8]) -> Option<&mut [u8]> { unsafe {
-        static ls: [Fin7; 32] = [F0, F6, F6, F6, F6, F6, F5, F5,
+    fn try_encode_utf8(mut self, bs: &mut [u8]) -> Option<&mut [u8]> {
+        static ls: [Fin7; 33] = [F0, F6, F6, F6, F6, F6, F5, F5,
                                  F5, F5, F5, F4, F4, F4, F4, F4,
                                  F3, F3, F3, F3, F3, F2, F2, F2,
-                                 F2, F1, F1, F1, F1, F1, F1, F1];
-        let l = *ls.get_unchecked(self.leading_zeros() as usize) as usize;
-        if 0 == l { return None }
+                                 F2, F1, F1, F1, F1, F1, F1, F1, F1];
+        let l = ls[self.leading_zeros() as usize] as usize;
         let first = !(!0u8 >> l);
-        let bs = bs.get_mut(0..l)?;
-        for i in (1..l).rev() {
-            *bs.get_unchecked_mut(i) = self as u8 & 0x3F | 0x80;
-            self >>= 6;
+        {
+            let (b0, bs) = bs.get_mut(0..l)?.split_first_mut()?;
+            for b in bs.iter_mut().rev() {
+                *b = self as u8 & 0x3F | 0x80;
+                self >>= 6;
+            }
+            *b0 = self as u8 | first;
         }
-        *bs.get_unchecked_mut(0) = self as u8 | first;
         Some(bs)
-    } }
+    }
 }
 
 /// Kludge until we have a stable version of `::core::intrinsics::assume`

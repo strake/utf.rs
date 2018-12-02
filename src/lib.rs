@@ -22,7 +22,6 @@ pub struct InvalidSequence(());
 
 impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
     type Item = Result<char, InvalidSequence>;
-    #[inline]
     fn next(&mut self) -> Option<Result<char, InvalidSequence>> {
         self.0.next().map(|b| {
             if b & 0x80 == 0 { Ok(b as char) } else {

@@ -77,15 +77,16 @@ impl UtfExt for u32 {
                                  F2, F1, F1, F1, F1, F1, F1, F1, F1];
         let l = ls[self.leading_zeros() as usize] as usize;
         let first = !(!0u8 >> l);
-        {
-            let (b0, bs) = bs.get_mut(0..l)?.split_first_mut()?;
+        Some({
+            let bs0 = bs.get_mut(0..l)?;
+            let (b0, bs) = bs0.split_first_mut()?;
             for b in bs.iter_mut().rev() {
                 *b = self as u8 & 0x3F | 0x80;
                 self >>= 6;
             }
-            *b0 = self as u8 | first;
-        }
-        Some(bs)
+            *b0 = self as u8 | if l > 1 { first } else { 0 };
+            bs0
+        })
     }
 }
 
@@ -96,7 +97,7 @@ enum Fin7 { F0 = 0, F1 = 1, F2 = 2, F3 = 3, F4 = 4, F5 = 5, F6 = 6 }
 use self::Fin7::*;
 
 #[test]
-fn test() {
+fn test_decode() {
     use std::vec::Vec;
     use std::iter::FromIterator;
 
@@ -121,5 +122,17 @@ fn test() {
                 "chars = {}, bytes = {:?}, decoded = {:?}", str, bs,
                 Vec::from_iter(decode_utf8(bs.into_iter().cloned())
                                    .map(|r_b| r_b.unwrap_or('\u{FFFD}'))));
+    }
+}
+
+#[test]
+fn test_encode() {
+    for &(s, x) in
+      [ ("A", 'A')
+      , ("♥", '♥')
+      ].iter() {
+        let mut buf = [0u8; 6];
+        let ts = x.try_encode_utf8(&mut buf[..]).map(|x| x as &str);
+        assert_eq!(Some(s), ts, "{:02X?}", ts.map(str::as_bytes));
     }
 }

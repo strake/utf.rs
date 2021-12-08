@@ -3,7 +3,7 @@
 #[cfg(test)]
 extern crate std;
 
-use core::{char::*, iter, str};
+use core::{char::*, iter, num::NonZeroUsize, str};
 
 /// An iterator over an iterator of bytes of the characters the bytes represent
 /// as UTF-8
@@ -44,6 +44,25 @@ impl<I: Iterator<Item = u8>> Iterator for DecodeUtf8<I> {
             }
         })
     }
+}
+
+pub fn decode_slice_u32(bs: &[u8]) -> Option<(u32, NonZeroUsize)> {
+    let bs_l = bs.len();
+    let (&b0, bs) = bs.split_first()?;
+    let l = (!b0).leading_zeros() as usize;
+    if l > bs_l { return None }
+    if 0 == l { return Some((b0 as _, unsafe { NonZeroUsize::new_unchecked(1) })); }
+    let l = NonZeroUsize::new(l)?;
+    let mut x = b0 as u32 & (0x7F >> l.get());
+    for b in bs.iter().cloned().take(l.get().wrapping_sub(1)) {
+        x <<= 6;
+        x |= b as u32 & 0x3F;
+    }
+    Some((x, l))
+}
+
+pub fn decode_slice(bs: &[u8]) -> Option<(char, NonZeroUsize)> {
+    decode_slice_u32(bs).and_then(|(x, n)| from_u32(x).map(|x| (x, n)))
 }
 
 mod private {

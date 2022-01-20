@@ -134,7 +134,7 @@ fn test_decode() {
                        ("�", &[0xFEu8] as &[u8]),
                        ("�A", &[0xFEu8, 0x41u8] as &[u8]),
                        ("�", &[0xFFu8] as &[u8]),
-                       ("�A", &[0xFFu8, 0x41u8] as &[u8])].into_iter() {
+                       ("�A", &[0xFFu8, 0x41u8] as &[u8])].iter() {
         assert!(Iterator::eq(str.chars(),
                              decode_utf8(bs.into_iter().cloned())
                                  .map(|r_b| r_b.unwrap_or('\u{FFFD}'))),
